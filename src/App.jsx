@@ -64,7 +64,7 @@ function App() {
     // 2. Prepare the image (removing the data:image/jpeg;base64, prefix)
     const base64Data = image.split(',')[1];
     
-    const prompt = "You are a professional automotive and landscape photographer. Analyze this photo and provide 3-4 concise, high-end editing tips regarding lighting, color grading, and composition.";
+    const prompt = "You are a professional photographer. Analyze this photo and provide 3-4 concise, high-end editing tips regarding lighting, color grading, and composition.";
 
     // 3. Send directly to Google
     const result = await model.generateContent([
