@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from "motion/react";
 import { Upload, Sliders, Loader2, X } from 'lucide-react';
 import { ParticleField } from "./ParticleField";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 function App() {
   const [image, setImage] = useState(null);
@@ -52,29 +53,34 @@ function App() {
 };
 
   const generateAdvice = async () => {
-    if (!image) return alert("Please upload a photo first!");
-    setLoading(true);
-    try {
-      const response = await fetch('http://localhost:3001/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image })
-      });
-      const data = await response.json();
-      setSettings({
-        exposure: data.exposure,
-        contrast: data.contrast,
-        highlights: data.highlights,
-        shadows: data.shadows,
-        vibrance: data.vibrance
-      });
-      setAdvice(data.advice);
-    } catch (error) {
-      console.error("Error connecting to server:", error);
-      alert("Server isn't responding. Make sure 'node index.js' is running!");
-    }
+  if (!image) return alert("Please upload a photo first!");
+  setLoading(true);
+
+  try {
+    // 1. Initialize Gemini with your Vercel Environment Variable
+    const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    // 2. Prepare the image (removing the data:image/jpeg;base64, prefix)
+    const base64Data = image.split(',')[1];
+    
+    const prompt = "You are a professional automotive and landscape photographer. Analyze this photo and provide 3-4 concise, high-end editing tips regarding lighting, color grading, and composition.";
+
+    // 3. Send directly to Google
+    const result = await model.generateContent([
+      prompt,
+      { inlineData: { data: base64Data, mimeType: "image/jpeg" } }
+    ]);
+
+    const text = result.response.text();
+    setAdvice(text);
+  } catch (error) {
+    console.error("Error:", error);
+    alert("Failed to get advice. Make sure your API key is set up in Vercel!");
+  } finally {
     setLoading(false);
-  };
+  }
+};
 
   const Slider = ({ label, value, min, max }) => (
     <div className="space-y-2">
