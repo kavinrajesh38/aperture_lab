@@ -52,35 +52,56 @@ function App() {
   });
 };
 
-  const generateAdvice = async () => {
-  if (!image) return alert("Please upload a photo first!");
-  setLoading(true);
+const generateAdvice = async () => {
+    if (!image) return alert("Please upload a photo first!");
+    setLoading(true);
 
-  try {
-    // 1. Initialize Gemini with your Vercel Environment Variable
-    const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    try {
+      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); 
 
-    // 2. Prepare the image (removing the data:image/jpeg;base64, prefix)
-    const base64Data = image.split(',')[1];
-    
-    const prompt = "You are a professional photographer. Analyze this photo and provide 3-4 concise, high-end editing tips regarding lighting, color grading, and composition.";
+      const base64Data = image.split(',')[1];
+      
+      // We ask for JSON so the code can actually read the numbers
+      const prompt = `Act as a high-end automotive editor. Analyze this photo. 
+      Provide your response in EXACTLY this JSON format:
+      {
+        "text": "3 bullet points of advice here",
+        "exposure": number between -100 and 100,
+        "contrast": number between -100 and 100,
+        "highlights": number between -100 and 100,
+        "shadows": number between -100 and 100,
+        "vibrance": number between -100 and 100
+      }
+      Do not include any markdown formatting like \`\`\`json. Just the raw JSON object.`;
 
-    // 3. Send directly to Google
-    const result = await model.generateContent([
-      prompt,
-      { inlineData: { data: base64Data, mimeType: "image/jpeg" } }
-    ]);
+      const result = await model.generateContent([
+        prompt,
+        { inlineData: { data: base64Data, mimeType: "image/jpeg" } }
+      ]);
 
-    const text = result.response.text();
-    setAdvice(text);
-  } catch (error) {
-      console.error("The actual error:", error);
-      alert("Error detail: " + error.message);
+      const responseText = result.response.text();
+      
+      // Parse the JSON string into a Javascript Object
+      const data = JSON.parse(responseText);
+
+      // Update BOTH the text and the slider positions
+      setAdvice(data.text);
+      setSettings({
+        exposure: data.exposure || 0,
+        contrast: data.contrast || 0,
+        highlights: data.highlights || 0,
+        shadows: data.shadows || 0,
+        vibrance: data.vibrance || 0
+      });
+
+    } catch (error) {
+      console.error("Analysis Error:", error);
+      alert("I couldn't read the AI's settings. Make sure the prompt is asking for JSON!");
     } finally {
-    setLoading(false);
-  }
-};
+      setLoading(false);
+    }
+  };
 
   const Slider = ({ label, value, min, max }) => (
     <div className="space-y-2">
@@ -92,7 +113,8 @@ function App() {
         <motion.div 
           className="absolute h-full bg-cyan-500"
           initial={{ width: "50%" }}
-          animate={{ width: `${((value - min) / (max - min)) * 100}%` }}
+          // Change this line in your Slider component:
+          animate={{ width: `${Math.abs(value) / 2}%`, left: value >= 0 ? "50%" : `${50 - (Math.abs(value) / 2)}%` }}
           transition={{ type: "spring", stiffness: 25, damping: 20, mass: 1.5 }}
         />
       </div>
