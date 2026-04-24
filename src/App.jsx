@@ -75,9 +75,9 @@ function App() {
     const text = result.response.text();
     setAdvice(text);
   } catch (error) {
-    console.error("Error:", error);
-    alert("Failed to get advice. Make sure your API key is set up in Vercel!");
-  } finally {
+      console.error("The actual error:", error);
+      alert("Error detail: " + error.message);
+    } finally {
     setLoading(false);
   }
 };
