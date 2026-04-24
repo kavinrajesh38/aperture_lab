@@ -113,8 +113,7 @@ const generateAdvice = async () => {
         <motion.div 
           className="absolute h-full bg-cyan-500"
           initial={{ width: "50%" }}
-          // Change this line in your Slider component:
-          animate={{ width: `${Math.abs(value) / 2}%`, left: value >= 0 ? "50%" : `${50 - (Math.abs(value) / 2)}%` }}
+          animate={{ width: `${((value - min) / (max - min)) * 100}%` }}
           transition={{ type: "spring", stiffness: 25, damping: 20, mass: 1.5 }}
         />
       </div>
