@@ -58,15 +58,20 @@ const generateAdvice = async () => {
 
   try {
     const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-    // Using 1.5-flash for the most consistent JSON output
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    
+    // We specify the response type here to FORCE JSON output
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash",
+      generationConfig: {
+        responseMimeType: "application/json",
+      }
+    });
 
     const base64Data = image.split(',')[1];
     
-    const prompt = `Analyze this photo like a pro automotive/landscape editor. 
-    Return ONLY a raw JSON object with this exact structure:
-    {"text": "3 short bullet points", "exposure": 20, "contrast": 10, "highlights": -5, "shadows": 10, "vibrance": 15}
-    Do not include any words before or after the JSON.`;
+    // The prompt is now much simpler because the model is forced into JSON mode
+    const prompt = `Analyze this photograph as an photography expert. Provide 3 short tips and numeric values for: exposure, contrast, highlights, shadows, and vibrance (range -100 to 100). 
+    Use keys: "text", "exposure", "contrast", "highlights", "shadows", "vibrance"`;
 
     const result = await model.generateContent([
       prompt,
@@ -74,27 +79,21 @@ const generateAdvice = async () => {
     ]);
 
     const response = await result.response;
-    const rawText = response.text();
-    
-    // THE SCRUBBER: Finds the first '{' and the last '}'
-    const start = rawText.indexOf('{');
-    const end = rawText.lastIndexOf('}') + 1;
-    const jsonString = rawText.slice(start, end);
+    const data = JSON.parse(response.text());
 
-    const data = JSON.parse(jsonString);
-
+    // Update the UI
     setAdvice(data.text);
     setSettings({
-      exposure: data.exposure || 0,
-      contrast: data.contrast || 0,
-      highlights: data.highlights || 0,
-      shadows: data.shadows || 0,
-      vibrance: data.vibrance || 0
+      exposure: data.exposure ?? 0,
+      contrast: data.contrast ?? 0,
+      highlights: data.highlights ?? 0,
+      shadows: data.shadows ?? 0,
+      vibrance: data.vibrance ?? 0
     });
 
   } catch (error) {
-    console.error("JSON Error Details:", error);
-    alert("The AI sent a messy response. Try clicking Generate again!");
+    console.error("System Error:", error);
+    alert("System recalibrating. Please try one more time!");
   } finally {
     setLoading(false);
   }
