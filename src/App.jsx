@@ -53,55 +53,53 @@ function App() {
 };
 
 const generateAdvice = async () => {
-    if (!image) return alert("Please upload a photo first!");
-    setLoading(true);
+  if (!image) return alert("Please upload a photo first!");
+  setLoading(true);
 
-    try {
-      const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" }); 
+  try {
+    const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+    // Using 1.5-flash for the most consistent JSON output
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-      const base64Data = image.split(',')[1];
-      
-      // We ask for JSON so the code can actually read the numbers
-      const prompt = `Act as a high-end automotive editor. Analyze this photo. 
-      Provide your response in EXACTLY this JSON format:
-      {
-        "text": "3 bullet points of advice here",
-        "exposure": number between -100 and 100,
-        "contrast": number between -100 and 100,
-        "highlights": number between -100 and 100,
-        "shadows": number between -100 and 100,
-        "vibrance": number between -100 and 100
-      }
-      Do not include any markdown formatting like \`\`\`json. Just the raw JSON object.`;
+    const base64Data = image.split(',')[1];
+    
+    const prompt = `Analyze this photo like a pro automotive/landscape editor. 
+    Return ONLY a raw JSON object with this exact structure:
+    {"text": "3 short bullet points", "exposure": 20, "contrast": 10, "highlights": -5, "shadows": 10, "vibrance": 15}
+    Do not include any words before or after the JSON.`;
 
-      const result = await model.generateContent([
-        prompt,
-        { inlineData: { data: base64Data, mimeType: "image/jpeg" } }
-      ]);
+    const result = await model.generateContent([
+      prompt,
+      { inlineData: { data: base64Data, mimeType: "image/jpeg" } }
+    ]);
 
-      const responseText = result.response.text();
-      
-      // Parse the JSON string into a Javascript Object
-      const data = JSON.parse(responseText);
+    const response = await result.response;
+    const rawText = response.text();
+    
+    // THE SCRUBBER: Finds the first '{' and the last '}'
+    const start = rawText.indexOf('{');
+    const end = rawText.lastIndexOf('}') + 1;
+    const jsonString = rawText.slice(start, end);
 
-      // Update BOTH the text and the slider positions
-      setAdvice(data.text);
-      setSettings({
-        exposure: data.exposure || 0,
-        contrast: data.contrast || 0,
-        highlights: data.highlights || 0,
-        shadows: data.shadows || 0,
-        vibrance: data.vibrance || 0
-      });
+    const data = JSON.parse(jsonString);
 
-    } catch (error) {
-      console.error("Analysis Error:", error);
-      alert("I couldn't read the AI's settings. Make sure the prompt is asking for JSON!");
-    } finally {
-      setLoading(false);
-    }
-  };
+    setAdvice(data.text);
+    setSettings({
+      exposure: data.exposure || 0,
+      contrast: data.contrast || 0,
+      highlights: data.highlights || 0,
+      shadows: data.shadows || 0,
+      vibrance: data.vibrance || 0
+    });
+
+  } catch (error) {
+    console.error("JSON Error Details:", error);
+    alert("The AI sent a messy response. Try clicking Generate again!");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const Slider = ({ label, value, min, max }) => (
     <div className="space-y-2">
@@ -254,6 +252,6 @@ const generateAdvice = async () => {
     </footer>
   </div>
 );
-}
+};
 
 export default App;
